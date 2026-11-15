@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/supabase";
 import "../chapters.css";
+import Comments from "@/components/Comments";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function Chapter({ params }) {
         {prev ? <Link href={`/chapters/${prev.id}`}>الفصل السابق</Link> : <span />}
         {next ? <Link href={`/chapters/${next.id}`}>الفصل التالي</Link> : <span />}
       </nav>
+        <Comments chapterId={c.id} />
     </article>
   );
     }
