@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Crown from "./Crown";
+import AuthNav from "./AuthNav";
 import { NAV } from "./nav";
 
 export default function Header() {
@@ -13,7 +14,8 @@ export default function Header() {
         {NAV.filter((n) => n.ready).map((n) => (
           <Link key={n.href} href={n.href}>{n.label}</Link>
         ))}
+        <AuthNav />
       </nav>
     </header>
   );
-  }
+}
