@@ -30,7 +30,7 @@ export default function Auth() {
         });
         if (error) {
           if (/registered/i.test(error.message)) throw new Error("هذا البريد مسجّل مسبقاً.");
-          throw new Error("تعذّر إنشاء الحساب. تأكد من البريد وجرّب اسماً مستعاراً آخر.");
+          throw new Error("تعذّر إنشاء الحساب: " + error.message);
         }
         if (!data.session) {
           setMsg("تم إنشاء الحساب. افتح رسالة التأكيد في بريدك ثم سجّل الدخول.");
