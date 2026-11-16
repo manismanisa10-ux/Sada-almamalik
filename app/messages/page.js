@@ -138,7 +138,7 @@ export default function Messages() {
                 msgs={thread}
                 meId={me.id}
                 names={names}
-                group={false}
+                group
                 senderKey="sender"
                 canDelete={(m) => m.sender === me.id}
                 onDelete={remove}
