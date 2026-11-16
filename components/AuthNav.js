@@ -11,6 +11,7 @@ export default function AuthNav() {
   return (
     <span className="auth-box">
       <Link href={`/profile?u=${encodeURIComponent(me.nickname)}`}>{me.nickname}</Link>
+        {me.role === "admin" && <Link href="/admin">الإدارة</Link>}
       <button
         type="button"
         onClick={async () => {
