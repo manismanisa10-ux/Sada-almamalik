@@ -47,3 +47,4 @@ export default async function Profile({ searchParams }) {
     </section>
   );
 }
+import FriendButton from "@/components/FriendButton";
