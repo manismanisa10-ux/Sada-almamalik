@@ -1,1 +1,1 @@
-# Sada-almamalik
+# Sada-almamalik.
