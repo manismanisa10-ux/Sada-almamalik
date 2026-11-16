@@ -6,6 +6,9 @@ export default function Media({ m }) {
       </a>
     );
   }
+  if (m.kind === "video" && m.media_url) {
+    return <video src={m.media_url} controls playsInline preload="metadata" className="chat-video" />;
+  }
   if (m.kind === "voice" && m.media_url) {
     return <audio src={m.media_url} controls preload="none" className="chat-audio" />;
   }
