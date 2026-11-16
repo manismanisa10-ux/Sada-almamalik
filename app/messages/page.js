@@ -3,10 +3,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sb } from "@/lib/browser";
 import { useMe } from "@/components/useMe";
+import ChatInput from "@/components/ChatInput";
+import Media from "@/components/Media";
 import "../chat.css";
 
 const time = (d) => new Date(d).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
 const prof = (n) => "/profile?u=" + encodeURIComponent(n);
+const preview = (m) =>
+  m.kind === "image" ? "🖼️ صورة" : m.kind === "voice" ? "🎤 رسالة صوتية" : m.kind === "sticker" ? m.body : (m.body || "").slice(0, 60);
 
 export default function Messages() {
   const { me, ready } = useMe();
@@ -15,7 +19,6 @@ export default function Messages() {
   const [convs, setConvs] = useState([]);
   const [names, setNames] = useState({});
   const [thread, setThread] = useState([]);
-  const [body, setBody] = useState("");
   const [find, setFind] = useState("");
   const [err, setErr] = useState("");
   const box = useRef(null);
@@ -30,7 +33,7 @@ export default function Messages() {
     const c = sb();
     const [f, pm] = await Promise.all([
       c.from("friendships").select("id, requester, addressee, status"),
-      c.from("private_messages").select("sender, receiver, body, created_at").order("created_at", { ascending: false }).limit(200),
+      c.from("private_messages").select("sender, receiver, body, kind, created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     const fr = f.data || [];
     setRows(fr);
@@ -56,11 +59,12 @@ export default function Messages() {
     if (!me || !withId) return;
     const { data, error } = await sb()
       .from("private_messages")
-      .select("id, sender, body, created_at")
+      .select("id, sender, body, kind, media_url, created_at")
       .or(`and(sender.eq.${me.id},receiver.eq.${withId}),and(sender.eq.${withId},receiver.eq.${me.id})`)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) { setErr("تعذّر تحميل المحادثة: " + error.message); return; }
+    setErr("");
     setThread((data || []).reverse());
   }, [me, withId]);
 
@@ -76,14 +80,12 @@ export default function Messages() {
     if (box.current) box.current.scrollTop = box.current.scrollHeight;
   }, [thread.length]);
 
-  async function send(e) {
-    e.preventDefault();
-    const text = body.trim();
-    if (!text) return;
-    setErr("");
-    const { error } = await sb().from("private_messages").insert({ sender: me.id, receiver: withId, body: text });
-    if (error) setErr(/rate/i.test(error.message) ? "انتظر لحظة قبل الإرسال." : "تعذّر الإرسال: " + error.message);
-    else { setBody(""); loadThread(); loadAll(); }
+  async function send(msg) {
+    const { error } = await sb().from("private_messages").insert({ sender: me.id, receiver: withId, ...msg });
+    if (error) return /rate/i.test(error.message) ? "انتظر لحظة قبل الإرسال." : "تعذّر الإرسال: " + error.message;
+    loadThread();
+    loadAll();
+    return null;
   }
 
   async function answer(id, accept) {
@@ -124,19 +126,16 @@ export default function Messages() {
         ) : (
           <div className="chat">
             <div className="chat-box" ref={box}>
-              {thread.length === 0 && <p className="empty">لا توجد رسائل بعد.</p>}
+              {thread.length === 0 && !err && <p className="empty">لا توجد رسائل بعد.</p>}
               {thread.map((m) => (
                 <div key={m.id} className={m.sender === me.id ? "bub me" : "bub"}>
-                  <p>{m.body}</p>
+                  <Media m={m} />
                   <small>{time(m.created_at)}</small>
                 </div>
               ))}
             </div>
             {err && <div className="msg" role="alert">{err}</div>}
-            <form className="chat-form" onSubmit={send}>
-              <input value={body} onChange={(e) => setBody(e.target.value)} maxLength={1000} placeholder="اكتب رسالتك" aria-label="رسالتك" />
-              <button type="submit">إرسال</button>
-            </form>
+            <ChatInput userId={me.id} onSend={send} />
           </div>
         )}
       </section>
@@ -174,7 +173,7 @@ export default function Messages() {
         <div key={cv.id} className="m-item">
           <div style={{ display: "grid" }}>
             <Link href={prof(nick(cv.id))}>{nick(cv.id)}</Link>
-            <small>{cv.last.body.slice(0, 60)}</small>
+            <small>{preview(cv.last)}</small>
           </div>
           <button type="button" onClick={() => setWithId(cv.id)}>فتح</button>
         </div>
@@ -189,4 +188,4 @@ export default function Messages() {
       ))}
     </section>
   );
-      }
+          }
