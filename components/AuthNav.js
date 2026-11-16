@@ -10,8 +10,10 @@ export default function AuthNav() {
   if (!me) return <Link href="/auth" className="auth-link">دخول / تسجيل</Link>;
   return (
     <span className="auth-box">
+      <Link href="/chat">الدردشة</Link>
+      <Link href="/messages">الرسائل</Link>
       <Link href={`/profile?u=${encodeURIComponent(me.nickname)}`}>{me.nickname}</Link>
-        {me.role === "admin" && <Link href="/admin">الإدارة</Link>}
+      {me.role === "admin" && <Link href="/admin">الإدارة</Link>}
       <button
         type="button"
         onClick={async () => {
@@ -23,4 +25,4 @@ export default function AuthNav() {
       </button>
     </span>
   );
-    }
+      }
