@@ -34,6 +34,7 @@ export default async function Profile({ searchParams }) {
     <section className="wrap">
       <h2>{p.nickname}</h2>
       <small>انضم في {fmt(p.created_at)}</small>
+          <div style={{ margin: "1rem 0" }}><FriendButton userId={p.id} /></div>
       <h3 style={{ margin: "1.5rem 0 .75rem" }}>التعليقات</h3>
       {list.length === 0 && <p className="empty">لم يكتب أي تعليق بعد.</p>}
       {list.map((c) => (
