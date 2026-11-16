@@ -193,7 +193,7 @@ export default function Messages() {
               <Avatar name={nick(cv.id)} size={46} />
               <span className="conv-main">
                 <strong>{nick(cv.id)}</strong>
-                <small>{preview(cv.last)}</small>
+                <small
               </span>
               <span className="conv-time">{stamp(cv.last.created_at)}</span>
             </button>
