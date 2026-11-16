@@ -1,16 +1,22 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sb } from "@/lib/browser";
 import { useMe } from "@/components/useMe";
 import ChatInput from "@/components/ChatInput";
-import Media from "@/components/Media";
+import MessageList from "@/components/MessageList";
+import Avatar from "@/components/Avatar";
 import "../chat.css";
 
-const time = (d) => new Date(d).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
 const prof = (n) => "/profile?u=" + encodeURIComponent(n);
 const preview = (m) =>
-  m.kind === "image" ? "🖼️ صورة" : m.kind === "voice" ? "🎤 رسالة صوتية" : m.kind === "sticker" ? m.body : (m.body || "").slice(0, 60);
+  m.kind === "image" ? "🖼️ صورة" : m.kind === "voice" ? "🎤 رسالة صوتية" : m.kind === "video" ? "🎬 فيديو" : m.kind === "sticker" ? m.body : (m.body || "").slice(0, 60);
+const stamp = (d) => {
+  const x = new Date(d);
+  return x.toDateString() === new Date().toDateString()
+    ? x.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" })
+    : x.toLocaleDateString("ar", { day: "numeric", month: "short" });
+};
 
 export default function Messages() {
   const { me, ready } = useMe();
@@ -21,7 +27,6 @@ export default function Messages() {
   const [thread, setThread] = useState([]);
   const [find, setFind] = useState("");
   const [err, setErr] = useState("");
-  const box = useRef(null);
 
   useEffect(() => {
     const w = new URLSearchParams(window.location.search).get("with");
@@ -76,16 +81,18 @@ export default function Messages() {
     return () => clearInterval(t);
   }, [me, loadAll, loadThread]);
 
-  useEffect(() => {
-    if (box.current) box.current.scrollTop = box.current.scrollHeight;
-  }, [thread.length]);
-
   async function send(msg) {
     const { error } = await sb().from("private_messages").insert({ sender: me.id, receiver: withId, ...msg });
     if (error) return /rate/i.test(error.message) ? "انتظر لحظة قبل الإرسال." : "تعذّر الإرسال: " + error.message;
     loadThread();
     loadAll();
     return null;
+  }
+
+  async function remove(id) {
+    if (!confirm("حذف هذه الرسالة؟")) return;
+    await sb().from("private_messages").delete().eq("id", id);
+    loadThread();
   }
 
   async function answer(id, accept) {
@@ -113,31 +120,37 @@ export default function Messages() {
   if (withId) {
     const isFriend = friends.some((r) => other(r) === withId);
     return (
-      <section className="wrap">
-        <div className="m-head">
-          <h2>{nick(withId)}</h2>
-          <div>
-            <Link href={prof(nick(withId))} className="m-btn">الملف الشخصي</Link>{" "}
-            <button type="button" className="m-btn" onClick={() => { setWithId(null); setThread([]); }}>رجوع</button>
+      <section className="wrap chat-page">
+        <div className="chat">
+          <div className="chat-head">
+            <button type="button" className="h-btn" onClick={() => { setWithId(null); setThread([]); }}>رجوع</button>
+            <Avatar name={nick(withId)} size={40} />
+            <div className="grow"><strong>{nick(withId)}</strong></div>
+            <Link href={prof(nick(withId))} className="h-btn">الملف الشخصي</Link>
           </div>
-        </div>
-        {!isFriend ? (
-          <p className="msg">لا تستطيع مراسلة هذا العضو قبل أن تصبحا صديقين. افتح <Link href={prof(nick(withId))}>ملفه الشخصي</Link> وأرسل له طلب صداقة.</p>
-        ) : (
-          <div className="chat">
-            <div className="chat-box" ref={box}>
-              {thread.length === 0 && !err && <p className="empty">لا توجد رسائل بعد.</p>}
-              {thread.map((m) => (
-                <div key={m.id} className={m.sender === me.id ? "bub me" : "bub"}>
-                  <Media m={m} />
-                  <small>{time(m.created_at)}</small>
-                </div>
-              ))}
+          {!isFriend ? (
+            <div className="chat-box">
+              <p className="msg">لا تستطيع مراسلة هذا العضو قبل أن تصبحا صديقين. افتح <Link href={prof(nick(withId))}>ملفه الشخصي</Link> وأرسل له طلب صداقة.</p>
             </div>
-            {err && <div className="msg" role="alert">{err}</div>}
-            <ChatInput userId={me.id} onSend={send} />
-          </div>
-        )}
+          ) : (
+            <>
+              <MessageList
+                msgs={thread}
+                meId={me.id}
+                names={names}
+                group={false}
+                senderKey="sender"
+                canDelete={(m) => m.sender === me.id}
+                onDelete={remove}
+                empty="لا توجد رسائل بعد."
+              />
+              {err && <div className="msg" role="alert">{err}</div>}
+              <div className="chat-bar">
+                <ChatInput userId={me.id} onSend={send} />
+              </div>
+            </>
+          )}
+        </div>
       </section>
     );
   }
@@ -157,8 +170,11 @@ export default function Messages() {
           <h3 className="m-sec">طلبات الصداقة</h3>
           {incoming.map((r) => (
             <div key={r.id} className="m-item">
-              <Link href={prof(nick(r.requester))}>{nick(r.requester)}</Link>
-              <div>
+              <span className="who">
+                <Avatar name={nick(r.requester)} />
+                <Link href={prof(nick(r.requester))}>{nick(r.requester)}</Link>
+              </span>
+              <div className="acts">
                 <button type="button" onClick={() => answer(r.id, true)}>قبول</button>
                 <button type="button" onClick={() => answer(r.id, false)}>رفض</button>
               </div>
@@ -168,24 +184,36 @@ export default function Messages() {
       )}
 
       <h3 className="m-sec">المحادثات</h3>
-      {convs.length === 0 && <p className="empty">لا توجد محادثات بعد. افتح الملف الشخصي لصديق واضغط «مراسلة».</p>}
-      {convs.map((cv) => (
-        <div key={cv.id} className="m-item">
-          <div style={{ display: "grid" }}>
-            <Link href={prof(nick(cv.id))}>{nick(cv.id)}</Link>
-            <small>{preview(cv.last)}</small>
-          </div>
-          <button type="button" onClick={() => setWithId(cv.id)}>فتح</button>
+      {convs.length === 0 ? (
+        <p className="empty">لا توجد محادثات بعد. افتح الملف الشخصي لصديق واضغط «مراسلة».</p>
+      ) : (
+        <div className="list-box">
+          {convs.map((cv) => (
+            <button key={cv.id} type="button" className="conv" onClick={() => setWithId(cv.id)}>
+              <Avatar name={nick(cv.id)} size={46} />
+              <span className="conv-main">
+                <strong>{nick(cv.id)}</strong>
+                <small>{preview(cv.last)}</small>
+              </span>
+              <span className="conv-time">{stamp(cv.last.created_at)}</span>
+            </button>
+          ))}
         </div>
-      ))}
+      )}
 
       <h3 className="m-sec">أصدقائي</h3>
       {friends.length === 0 && <p className="empty">لم تضف أصدقاء بعد.</p>}
       {friends.map((r) => (
         <div key={r.id} className="m-item">
-          <Link href={prof(nick(other(r)))}>{nick(other(r))}</Link>
+          <span className="who">
+            <Avatar name={nick(other(r))} />
+            <Link href={prof(nick(other(r)))}>{nick(other(r))}</Link>
+          </span>
+          <div className="acts">
+            <button type="button" onClick={() => setWithId(other(r))}>مراسلة</button>
+          </div>
         </div>
       ))}
     </section>
   );
-          }
+                  }
