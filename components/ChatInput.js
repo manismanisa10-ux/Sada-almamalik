@@ -26,6 +26,7 @@ export default function ChatInput({ userId, onSend }) {
   const limit = useRef(null);
   const stream = useRef(null);
   const fileRef = useRef(null);
+    const videoRef = useRef(null);
 
   async function send(msg) {
     setErr("");
