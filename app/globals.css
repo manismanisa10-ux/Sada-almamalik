@@ -43,3 +43,8 @@ figure img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
 figcaption{padding:.5rem .25rem 0}
 .site-footer{text-align:center;padding:1.5rem;background:var(--ink);color:var(--gold-light);border-top:3px double var(--gold)}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+html,body{overflow-x:hidden;max-width:100%}
+.site-header nav{flex-wrap:wrap;row-gap:.4rem;min-width:0}
+.auth-box{flex-wrap:wrap}
+.reader,.wrap{min-width:0}
+img{max-width:100%}
