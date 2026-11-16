@@ -59,7 +59,19 @@ export default function ChatInput({ userId, onSend }) {
     } catch (x) { setErr(x.message); }
     setBusy(false);
   }
-
+  async function video(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("video/")) { setErr("اختر ملف فيديو."); return; }
+    if (f.size > 25 * 1024 * 1024) { setErr("الفيديو أكبر من 25 ميغابايت. اختر مقطعاً أقصر."); return; }
+    setBusy(true);
+    try {
+      const url = await uploadMedia("chat", userId, f, undefined, 25);
+      await send({ kind: "video", body: "", media_url: url });
+    } catch (x) { setErr(x.message); }
+    setBusy(false);
+  }
   function cleanup() {
     clearInterval(tick.current);
     clearTimeout(limit.current);
@@ -128,6 +140,8 @@ export default function ChatInput({ userId, onSend }) {
           <button type="button" aria-label="ملصقات" onClick={() => setOpen((o) => !o)}>😊</button>
           <button type="button" aria-label="إرسال صورة" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>🖼️</button>
           <input type="file" accept="image/*" hidden ref={fileRef} onChange={image} />
+                  <button type="button" aria-label="إرسال فيديو" disabled={busy} onClick={() => videoRef.current && videoRef.current.click()}>🎬</button>
+          <input type="file" accept="video/*" hidden ref={videoRef} onChange={video} />
           <input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder="اكتب رسالتك" aria-label="رسالتك" />
           {text.trim() ? (
             <button type="submit" disabled={busy}>إرسال</button>
