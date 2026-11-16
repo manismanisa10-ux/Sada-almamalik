@@ -57,10 +57,12 @@ export default async function Home() {
           <ul className="list">
             {chapters.map((c) => (
               <li key={c.id}>
-                <small>{c.parts?.title} · الفصل {c.number}</small>
-                <h3>{c.title}</h3>
-                <small>نُشر في {fmt(c.published_at)}</small>
-              </li>
+  <Link href={`/chapters/${c.id}`} style={{ display: "block", textDecoration: "none" }}>
+    <small>{c.parts?.title} · الفصل {c.number}</small>
+    <h3>{c.title}</h3>
+    <small>نُشر في {fmt(c.published_at)}</small>
+  </Link>
+</li>
             ))}
           </ul>
         )}
