@@ -1,0 +1,24 @@
+.g-filters{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.g-filters button{font:inherit;padding:.3rem 1rem;background:var(--white);border:1px solid var(--gold);color:var(--ink);cursor:pointer}
+.g-filters button.on{background:var(--gold-light);font-weight:700}
+.g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem}
+.g-card{margin:0;background:var(--white);border:1px solid var(--gold);padding:.5rem;display:flex;flex-direction:column}
+.g-img{padding:0;border:0;background:none;cursor:zoom-in;display:block}
+.g-img img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.g-card.tall .g-img img{aspect-ratio:3/4}
+.g-card figcaption{display:grid;gap:.25rem;padding:.5rem .25rem 0}
+.g-card p{margin:0;font-size:.95rem}
+.g-admin{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+.g-admin button,.g-btn{font:inherit;font-size:.85rem;padding:.1rem .6rem;border:1px solid var(--gold);background:var(--white);color:var(--ink);cursor:pointer}
+.g-kh{font-size:1.5rem;margin:2rem 0 .75rem;color:#5B4591}
+.g-form{display:grid;gap:.75rem;margin-bottom:2rem;padding:1rem;background:var(--violet-soft);border:1px dashed var(--violet)}
+.g-form label{display:grid;gap:.3rem;font-weight:500}
+.g-form input,.g-form select,.g-form textarea{font:inherit;padding:.5rem .7rem;background:var(--white);border:1px solid var(--gold);color:var(--ink);width:100%}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(20,12,35,.96);display:flex;flex-direction:column}
+.lb-bar{display:flex;gap:.5rem;flex-wrap:wrap;padding:.6rem;justify-content:center}
+.lb-bar button{font:inherit;padding:.3rem 1rem;background:var(--gold-light);border:1px solid var(--gold);color:var(--ink);cursor:pointer}
+.lb-body{flex:1;overflow:auto;display:flex;padding:.5rem}
+.lb-body img{margin:auto;display:block}
+.lb-body img.fit{max-width:100%;max-height:calc(100vh - 9rem);object-fit:contain}
+.lb-body img.full{max-width:none;width:auto;height:auto}
+.lb-cap{color:var(--gold-light);text-align:center;margin:.4rem 1rem .8rem}
