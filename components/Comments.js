@@ -10,30 +10,38 @@ const fmt = (d) => new Date(d).toLocaleDateString("ar", { year: "numeric", month
 export default function Comments({ chapterId }) {
   const { me, ready } = useMe();
   const [items, setItems] = useState([]);
+  const [names, setNames] = useState({});
   const [likes, setLikes] = useState([]);
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     const c = sb();
-    const { data } = await c
+    const { data, error } = await c
       .from("comments")
-      .select("id, body, created_at, parent_id, user_id, profiles(nickname)")
+      .select("id, body, created_at, parent_id, user_id")
       .eq("chapter_id", chapterId)
       .order("created_at");
+    if (error) { setErr("تعذّر تحميل التعليقات: " + error.message); setLoaded(true); return; }
     const list = data || [];
     setItems(list);
     if (list.length) {
-      const { data: l } = await c
-        .from("comment_likes")
-        .select("comment_id, user_id")
-        .in("comment_id", list.map((x) => x.id));
-      setLikes(l || []);
+      const ids = [...new Set(list.map((x) => x.user_id))];
+      const [p, l] = await Promise.all([
+        c.from("profiles").select("id, nickname").in("id", ids),
+        c.from("comment_likes").select("comment_id, user_id").in("comment_id", list.map((x) => x.id)),
+      ]);
+      const m = {};
+      (p.data || []).forEach((r) => { m[r.id] = r.nickname; });
+      setNames(m);
+      setLikes(l.data || []);
     } else {
       setLikes([]);
     }
+    setLoaded(true);
   }, [chapterId]);
 
   useEffect(() => { load(); }, [load]);
@@ -48,7 +56,7 @@ export default function Comments({ chapterId }) {
     const { error } = await sb()
       .from("comments")
       .insert({ chapter_id: chapterId, user_id: me.id, parent_id: replyTo, body: text });
-    if (error) setErr(/rate/i.test(error.message) ? "انتظر لحظات قبل إرسال تعليق آخر." : "تعذّر إرسال التعليق.");
+    if (error) setErr(/rate/i.test(error.message) ? "انتظر لحظات قبل إرسال تعليق آخر." : "تعذّر إرسال التعليق: " + error.message);
     else { setBody(""); setReplyTo(null); await load(); }
     setBusy(false);
   }
@@ -71,11 +79,11 @@ export default function Comments({ chapterId }) {
   const row = (c, isReply) => {
     const n = likes.filter((l) => l.comment_id === c.id).length;
     const mine = me && likes.some((l) => l.comment_id === c.id && l.user_id === me.id);
-    const nick = c.profiles?.nickname || "قارئ";
+    const nick = names[c.user_id] || "قارئ";
     return (
       <div key={c.id} className={isReply ? "c-item reply" : "c-item"}>
         <div className="c-meta">
-          <Link href={`/profile?u=${encodeURIComponent(nick)}`}>{nick}</Link>
+          <Link href={"/profile?u=" + encodeURIComponent(nick)}>{nick}</Link>
           <small>{fmt(c.created_at)}</small>
         </div>
         <p className="c-body">{c.body}</p>
@@ -110,12 +118,12 @@ export default function Comments({ chapterId }) {
             </div>
           )}
           <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} placeholder="اكتب تعليقك" aria-label="تعليقك" />
-          {err && <div className="msg" role="alert">{err}</div>}
           <button className="btn" type="submit" disabled={busy}>{busy ? "جارٍ الإرسال..." : "إرسال التعليق"}</button>
         </form>
       )}
 
-      {roots.length === 0 && <p className="empty">لا توجد تعليقات بعد. كن أول من يعلّق.</p>}
+      {err && <div className="msg" role="alert">{err}</div>}
+      {loaded && roots.length === 0 && !err && <p className="empty">لا توجد تعليقات بعد. كن أول من يعلّق.</p>}
       {roots.map((r) => (
         <div key={r.id}>
           {row(r, false)}
@@ -124,4 +132,4 @@ export default function Comments({ chapterId }) {
       ))}
     </section>
   );
-}
+  }
