@@ -1,20 +1,17 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sb } from "@/lib/browser";
 import { useMe } from "@/components/useMe";
 import ChatInput from "@/components/ChatInput";
-import Media from "@/components/Media";
+import MessageList from "@/components/MessageList";
 import "../chat.css";
-
-const time = (d) => new Date(d).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
 
 export default function GroupChat() {
   const { me, ready } = useMe();
   const [msgs, setMsgs] = useState([]);
   const [names, setNames] = useState({});
   const [err, setErr] = useState("");
-  const box = useRef(null);
 
   const load = useCallback(async () => {
     const c = sb();
@@ -43,10 +40,6 @@ export default function GroupChat() {
     return () => clearInterval(t);
   }, [me, load]);
 
-  useEffect(() => {
-    if (box.current) box.current.scrollTop = box.current.scrollHeight;
-  }, [msgs.length]);
-
   async function send(msg) {
     const { error } = await sb().from("group_messages").insert({ user_id: me.id, ...msg });
     if (error) return /rate/i.test(error.message) ? "انتظر لحظة قبل الإرسال." : "تعذّر الإرسال: " + error.message;
@@ -71,30 +64,30 @@ export default function GroupChat() {
   }
 
   return (
-    <section className="wrap">
-      <h2>الدردشة الجماعية</h2>
+    <section className="wrap chat-page">
       <div className="chat">
-        <div className="chat-box" ref={box}>
-          {msgs.length === 0 && !err && <p className="empty">لا توجد رسائل بعد. ابدأ الحديث.</p>}
-          {msgs.map((m) => {
-            const nick = names[m.user_id] || "قارئ";
-            return (
-              <div key={m.id} className={m.user_id === me.id ? "bub me" : "bub"}>
-                <small>
-                  <Link href={"/profile?u=" + encodeURIComponent(nick)}>{nick}</Link>
-                  <span>{time(m.created_at)}</span>
-                  {(m.user_id === me.id || me.role === "admin") && (
-                    <button type="button" onClick={() => remove(m.id)}>حذف</button>
-                  )}
-                </small>
-                <Media m={m} />
-              </div>
-            );
-          })}
+        <div className="chat-head">
+          <span className="avatar gicon">👑</span>
+          <div className="grow">
+            <strong>الدردشة الجماعية</strong>
+            <small>لكل أعضاء صدى الممالك</small>
+          </div>
         </div>
+        <MessageList
+          msgs={msgs}
+          meId={me.id}
+          names={names}
+          group
+          senderKey="user_id"
+          canDelete={(m) => m.user_id === me.id || me.role === "admin"}
+          onDelete={remove}
+          empty="لا توجد رسائل بعد. ابدأ الحديث."
+        />
         {err && <div className="msg" role="alert">{err}</div>}
-        <ChatInput userId={me.id} onSend={send} />
+        <div className="chat-bar">
+          <ChatInput userId={me.id} onSend={send} />
+        </div>
       </div>
     </section>
   );
-        }
+}
