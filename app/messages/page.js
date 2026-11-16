@@ -194,7 +194,7 @@ export default function Messages() {
               <span className="conv-main">
                 <strong>{nick(cv.id)}</strong>
                 <small
-              </span>
+              <small>{cv.last.sender === me.id ? "أنت: " : ""}{preview(cv.last)}</small>
               <span className="conv-time">{stamp(cv.last.created_at)}</span>
             </button>
           ))}
