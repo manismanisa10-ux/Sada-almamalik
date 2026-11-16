@@ -1,15 +1,20 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { sb } from "@/lib/browser";
+import { uploadImage } from "@/lib/upload";
 import { useMe } from "@/components/useMe";
 import "./admin.css";
 
 const empty = { id: null, part_id: "", number: "", title: "", content: "", cover_url: "", status: "draft", published_at: null };
+const defSettings = { tagline: "", about: "", hero_image_url: "" };
 
 export default function Admin() {
   const { me, ready } = useMe();
   const [parts, setParts] = useState([]);
+  const [partsOk, setPartsOk] = useState(false);
   const [chapters, setChapters] = useState([]);
+  const [settings, setSettings] = useState(defSettings);
   const [form, setForm] = useState(empty);
   const [partName, setPartName] = useState("");
   const [msg, setMsg] = useState("");
@@ -17,12 +22,18 @@ export default function Admin() {
 
   const load = useCallback(async () => {
     const c = sb();
-    const [p, ch] = await Promise.all([
+    const [p, ch, st] = await Promise.all([
       c.from("parts").select("id, title").order("id"),
       c.from("chapters").select("*").order("number"),
+      c.from("site_settings").select("key, value"),
     ]);
+    setPartsOk(!p.error);
+    if (p.error || ch.error) setMsg("تعذّر تحميل البيانات: " + (p.error || ch.error).message);
     setParts(p.data || []);
     setChapters(ch.data || []);
+    const s = { ...defSettings };
+    (st.data || []).forEach((r) => { if (r.key in s) s[r.key] = r.value || ""; });
+    setSettings(s);
   }, []);
 
   useEffect(() => {
@@ -39,7 +50,6 @@ export default function Admin() {
     if (!title || !number) { setMsg("أدخل رقم الفصل وعنوانه."); return; }
     setBusy(true);
     const row = {
-      part_id: form.part_id ? Number(form.part_id) : null,
       number,
       title,
       content: form.content,
@@ -47,6 +57,10 @@ export default function Admin() {
       status: form.status,
       updated_at: new Date().toISOString(),
     };
+    if (partsOk) {
+      const valid = parts.some((p) => String(p.id) === String(form.part_id));
+      row.part_id = valid ? Number(form.part_id) : null;
+    }
     if (form.status === "published" && !form.published_at) row.published_at = new Date().toISOString();
     const c = sb();
     const { error } = form.id
@@ -58,7 +72,7 @@ export default function Admin() {
   }
 
   function edit(c) {
-    setForm({ ...c, part_id: c.part_id ?? "", cover_url: c.cover_url ?? "" });
+    setForm({ ...c, part_id: c.part_id == null ? "" : String(c.part_id), cover_url: c.cover_url || "" });
     window.scrollTo({ top: 0 });
   }
 
@@ -83,17 +97,28 @@ export default function Admin() {
     load();
   }
 
-  async function upload(e) {
+  async function pickCover(e) {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { setMsg("الصورة أكبر من 5 ميغابايت."); return; }
-    const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const path = "covers/" + Date.now() + "." + ext;
-    const c = sb();
-    const { error } = await c.storage.from("images").upload(path, f);
-    if (error) { setMsg("تعذّر رفع الصورة: " + error.message); return; }
-    const { data } = c.storage.from("images").getPublicUrl(path);
-    setForm((x) => ({ ...x, cover_url: data.publicUrl }));
+    try {
+      const url = await uploadImage(f, "covers");
+      setForm((x) => ({ ...x, cover_url: url }));
+    } catch (err) { setMsg(err.message); }
+  }
+
+  async function pickHero(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadImage(f, "hero");
+      setSettings((x) => ({ ...x, hero_image_url: url }));
+    } catch (err) { setMsg(err.message); }
+  }
+
+  async function saveSettings() {
+    const rows = Object.entries(settings).map(([key, value]) => ({ key, value: value || "" }));
+    const { error } = await sb().from("site_settings").upsert(rows);
+    setMsg(error ? "تعذّر حفظ الإعدادات: " + error.message : "تم حفظ إعدادات الرئيسية.");
   }
 
   if (!ready) return <section className="wrap"><p>جارٍ التحميل...</p></section>;
@@ -116,7 +141,7 @@ export default function Admin() {
         <label>الجزء
           <select value={form.part_id} onChange={set("part_id")}>
             <option value="">بدون جزء</option>
-            {parts.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+            {parts.map((p) => <option key={p.id} value={String(p.id)}>{p.title}</option>)}
           </select>
         </label>
         <label>رقم الفصل
@@ -129,7 +154,7 @@ export default function Admin() {
           <textarea rows={14} value={form.content} onChange={set("content")} />
         </label>
         <label>صورة الغلاف
-          <input type="file" accept="image/*" onChange={upload} />
+          <input type="file" accept="image/*" onChange={pickCover} />
         </label>
         {form.cover_url && <img src={form.cover_url} alt="" className="ad-cover" />}
         <label>الحالة
@@ -150,6 +175,7 @@ export default function Admin() {
         <div key={c.id} className="ad-item">
           <span>{c.number}. {c.title} ({c.status === "published" ? "منشور" : "مسودة"})</span>
           <div>
+            {c.status === "published" && <Link href={"/chapters/" + c.id}>عرض</Link>}
             <button type="button" onClick={() => edit(c)}>تعديل</button>
             <button type="button" onClick={() => del(c)}>حذف</button>
           </div>
@@ -167,6 +193,26 @@ export default function Admin() {
           <button type="button" onClick={() => delPart(p)}>حذف</button>
         </div>
       ))}
+
+      <h3 className="ad-h">الصفحة الرئيسية</h3>
+      <div className="ad-form">
+        <label>الجملة تحت العنوان
+          <input value={settings.tagline} onChange={(e) => setSettings((s) => ({ ...s, tagline: e.target.value }))} />
+        </label>
+        <label>نبذة عن الرواية
+          <textarea rows={4} value={settings.about} onChange={(e) => setSettings((s) => ({ ...s, about: e.target.value }))} />
+        </label>
+        <label>الصورة الرئيسية
+          <input type="file" accept="image/*" onChange={pickHero} />
+        </label>
+        {settings.hero_image_url && <img src={settings.hero_image_url} alt="" className="ad-cover" />}
+        <div className="ad-row">
+          <button className="btn" type="button" onClick={saveSettings}>حفظ إعدادات الرئيسية</button>
+          {settings.hero_image_url && (
+            <button type="button" onClick={() => setSettings((s) => ({ ...s, hero_image_url: "" }))}>إزالة الصورة</button>
+          )}
+        </div>
+      </div>
     </section>
   );
-      }
+        }
